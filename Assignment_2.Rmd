@@ -1,0 +1,262 @@
+---
+title: "Assignment_2"
+author: "Bridget Fuller"
+date: "06-07-2026"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(caret)
+library(ISLR)
+head("UniversalBank")
+summary(UniversalBank)
+```
+
+creating dummy variables for Education field
+
+```{r}
+library(dplyr)
+bank$Education <- as.factor(bank$Education)
+dummies <- model.matrix(~ Education - 1, data = bank)
+head(dummies)
+dummy_model <- dummyVars(~ Education, data = bank)
+education_dummies <- predict(dummy_model, newdata = bank)
+head(education_dummies)
+bank <- cbind(bank, education_dummies)
+head(bank)
+```
+
+```{r}
+library(dplyr)
+
+names(bank) <- make.names(names(bank))
+
+m_universalbank<- select(bank,Age,Experience,Income,Family,CCAvg,Education.1,Education.2,Education.3,Mortgage,Securities.Account,CD.Account,Online,CreditCard,Personal.Loan)
+```
+
+training data sets
+
+```{r}
+set.seed(123)
+trainIndex <- createDataPartition(bank$Personal.Loan, p = 0.6, list = FALSE)
+train <- bank[trainIndex, ]
+test  <- bank[-trainIndex, ]
+train.norm.df[,3] <- as.factor(train.norm.df[,3])
+valid.norm.df[,3] <- as.factor(valid.norm.df[,3])
+valid.norm.df[,3] <- factor(valid.norm.df[,3], levels = levels(train.norm.df[,3]))
+```
+
+```{r}
+set.seed(15)
+Test_Index = createDataPartition(m_universalbank$Personal.Loan,p=0.4, list=FALSE) 
+Test_Data = m_universalbank[Test_Index,]
+TraVal_Data = m_universalbank[-Test_Index,]
+Train_Index = createDataPartition(TraVal_Data$Personal.Loan,p=0.6, list=FALSE)
+Train_Data = TraVal_Data[Train_Index,]
+Validation_Data = TraVal_Data[-Train_Index,]
+
+summary(Train_Data)
+summary(Validation_Data)
+summary(Test_Data)
+```
+
+```{r}
+train.norm.df <- Train_Data
+valid.norm.df <- Validation_Data
+traval.norm.df <- TraVal_Data
+```
+
+```{r}
+train.norm.df[, 1:2] <- predict(norm.values, Train_Data[, 1:2]) 
+valid.norm.df[, 1:2] <- predict(norm.values, Validation_Data[, 1:2])
+traval.norm.df[, 1:2] <- predict(norm.values, traval.norm.df[, 1:2])
+test.norm.df <- predict(norm.values, Test_Data[, 1:2])
+
+summary(train.norm.df)
+var(train.norm.df[, 1:2])
+summary(valid.norm.df)
+var(valid.norm.df[, 1:2])
+```
+modeling k-NN after normalization
+```{r}
+library(FNN)
+nn <- knn(train = train.norm.df[, 1:2], test = test.norm.df, 
+          cl = train.norm.df[, 3], k = 1, prob=TRUE) 
+row.names(Train_Data)[attr(nn, "nn.index")]
+```
+tuning K
+```{r}
+set.seed(123)
+
+model <- train(
+  Personal.Loan ~ Age  + Income,
+  data = predictors_normalized,
+  method = "knn",
+  tuneLength = 10
+)
+
+model
+plot(model)
+
+predictors_normalized$Personal.Loan <- as.factor(predictors_normalized$Personal.Loan)
+```
+pred <- predict(model, predictors_normalized)
+```
+
+final value K=23 
+
+Confusion Matrix for Validation set
+
+```{r}
+library("gmodels")
+CrossTable(x=Test_labels,y=Predicted_Test_labels, prop.chisq = FALSE)
+```
+
+```{r}
+Predicted_Test_labels <-knn(Train_Predictors, 
+                           Test_Predictors, 
+                           cl=Train_labels, k=100, prob=TRUE )
+
+class_prob<-attr(Predicted_Test_labels, 'prob')
+head(class_prob)
+```
+
+```{r}
+bank$Education <- as.factor(bank$Education)
+dummies <- model.matrix(~ Education - 1, data = bank)
+
+model_df <- cbind(
+  bank[, c("Age","Experience","Income","Family","CCAvg",
+           "Mortgage","Securities.Account","CD.Account",
+           "Online","CreditCard","Personal.Loan")],
+  dummies
+)
+norm_model <- preProcess(model_df[, -which(names(model_df) == "Personal.Loan")],
+                         method = "range")
+
+model_norm <- predict(norm_model, model_df)
+model_norm$Personal.Loan <- as.factor(model_df$Personal.Loan)
+
+set.seed(123)
+idx <- createDataPartition(model_norm$Personal.Loan, p = 0.8, list = FALSE)
+
+Train <- model_norm[idx, ]
+Test  <- model_norm[-idx, ]
+```
+
+
+```{r}
+library(class)
+
+Train_X <- Train[, names(new_customer_norm)]
+Train_y <- Train$Personal.Loan
+
+prediction <- knn(
+  train = Train_X,
+  test = new_customer_norm,
+  cl = Train_y,
+  k = 1
+)
+
+prediction
+```
+
+question 1 customer prediction 0. will not except the loan
+
+```{r}
+head(bank)
+bank$Education <- as.factor(bank$Education)
+edu_dummies <- model.matrix(~ Education - 1, data = bank)
+
+model_df <- cbind(
+  bank[, c("Age","Experience","Income","Family","CCAvg",
+           "Mortgage","Securities.Account","CD.Account",
+           "Online","CreditCard","Personal.Loan")],
+  edu_dummies
+)
+
+norm_model <- preProcess(model_df[, -which(names(model_df) == "Personal.Loan")],
+                         method = "range")
+
+model_norm <- predict(norm_model, model_df)
+model_norm$Personal.Loan <- as.factor(model_df$Personal.Loan)
+
+new_customer <- data.frame(
+  Age = 40,
+  Experience = 10,
+  Income = 84,
+  Family = 2,
+  CCAvg = 2,
+  Mortgage = 0,
+  Securities.Account = 0,
+  CD.Account = 0,
+  Online = 1,
+  CreditCard = 1,
+  Education1 = 0,
+  Education2 = 1,
+  Education3 = 0
+)
+new_customer_norm <- predict(norm_model, new_customer)
+
+library(class)
+
+Train_X <- Train[, names(new_customer_norm)]
+Train_y <- Train$Personal.Loan
+
+prediction <- knn(
+  train = Train_X,
+  test = new_customer_norm,
+  cl = Train_y,
+  k = 23
+)
+
+prediction
+```
+
+prediction for new customer is not to except using best K=23
+
+
+# 50/30/20 split
+```{r}
+
+set.seed(123)
+idx_train <- createDataPartition(data$Personal.Loan, p = 0.5, list = FALSE)
+Train <- data[idx_train, ]
+Temp  <- data[-idx_train, ]
+
+set.seed(123)
+idx_valid <- createDataPartition(Temp$Personal.Loan, p = 0.6, list = FALSE)
+Valid <- Temp[idx_valid, ]
+Test  <- Temp[-idx_valid, ]
+
+# Prepare predictors and labels
+Train_X <- Train[, setdiff(names(Train), "Personal.Loan")]
+Valid_X <- Valid[, setdiff(names(Valid), "Personal.Loan")]
+Test_X  <- Test[,  setdiff(names(Test),  "Personal.Loan")]
+
+Train_y <- Train$Personal.Loan
+Valid_y <- Valid$Personal.Loan
+Test_y  <- Test$Personal.Loan
+
+# KNN with k = 23
+k_val <- 23
+pred_train <- knn(Train_X, Train_X, cl = Train_y, k = k_val)
+pred_valid <- knn(Train_X, Valid_X, cl = Train_y, k = k_val)
+pred_test  <- knn(Train_X, Test_X,  cl = Train_y, k = k_val)
+
+# Confusion matrices
+cm_train <- confusionMatrix(pred_train, Train_y)
+cm_valid <- confusionMatrix(pred_valid, Valid_y)
+cm_test  <- confusionMatrix(pred_test,  Test_y)
+
+cm_train
+cm_valid
+cm_test
+
+
+
+
+
+
