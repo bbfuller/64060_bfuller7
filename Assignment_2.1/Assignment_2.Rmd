@@ -215,11 +215,14 @@ prediction <- knn(
 prediction
 ```
 
-prediction for new customer is not to except using best K=23
+prediction for new customer is not to acccept using best K=23
 
 
 # 50/30/20 split
 ```{r}
+library(caret)
+norm_model <- preProcess(model_df[, -which(names(model_df) == "Personal.Loan")],
+                         method = "range")
 
 set.seed(123)
 idx_train <- createDataPartition(data$Personal.Loan, p = 0.5, list = FALSE)
@@ -232,6 +235,7 @@ Valid <- Temp[idx_valid, ]
 Test  <- Temp[-idx_valid, ]
 
 # Prepare predictors and labels
+predictor_names <- setdiff(names(data), "Personal.Loan")
 Train_X <- Train[, setdiff(names(Train), "Personal.Loan")]
 Valid_X <- Valid[, setdiff(names(Valid), "Personal.Loan")]
 Test_X  <- Test[,  setdiff(names(Test),  "Personal.Loan")]
@@ -241,6 +245,7 @@ Valid_y <- Valid$Personal.Loan
 Test_y  <- Test$Personal.Loan
 
 # KNN with k = 23
+library(class)
 k_val <- 23
 pred_train <- knn(Train_X, Train_X, cl = Train_y, k = k_val)
 pred_valid <- knn(Train_X, Valid_X, cl = Train_y, k = k_val)
@@ -254,6 +259,11 @@ cm_test  <- confusionMatrix(pred_test,  Test_y)
 cm_train
 cm_valid
 cm_test
+
+cm_train$overall["Accuracy"]
+cm_valid$overall["Accuracy"]
+cm_test$overall["Accuracy"]
+
 
 
 
