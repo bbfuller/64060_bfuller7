@@ -1,0 +1,95 @@
+---
+title: "Assignment_3"
+output:
+  pdf_document: default
+  html_document: default
+date: "2026-06-13"
+---
+# loading in the data set Universal Bank
+```{r}
+library(readr)
+UniversalBank <- read_csv("~/MachineLearning/UniversalBank.csv")
+View(UniversalBank)
+
+# loading in needed package
+
+install.packages("e1071")
+
+library(caret)
+library(ISLR)
+library(e1071)
+
+#showing the data summary
+summary(UniversalBank)
+```
+
+#creating the pratitions
+```{r}
+library(caret)
+names(UniversalBank)[names(UniversalBank) == "Personal Loan"] <- "Personal.Loan"
+names(UniversalBank)
+set.seed(123)
+Index_Train<-createDataPartition(UniversalBank$Personal.Loan,p=.6,list=FALSE)
+Train <-UniversalBank[Index_Train,]
+Test  <-UniversalBank[-Index_Train,]
+```
+ 
+ #prediction test and matrix
+ 
+ ```{r}
+ Predicted_Test_labels <-predict(nb_model,Test)
+ library("gmodels")
+CrossTable(x=Test$Personal.Loan,y=Predicted_Test_labels, prop.chisq = FALSE)
+```
+#naive Bayes data
+```{r}
+library(e1071)
+nb_model <- naiveBayes(Personal.Loan ~ Online + CreditCard, data = Train)
+Predicted_Test_labels <-predict(nb_model,Test, type = "raw")
+head(Predicted_Test_labels)
+
+# ROC plot
+
+install.packages("pROC")
+library(pROC)
+roc(Test$Personal.Loan, Predicted_Test_labels[,2])
+plot.roc(Test$Personal.Loan,Predicted_Test_labels[,2])
+```
+
+#Box Cox analysis
+```{r}
+
+library(ISLR)
+library(caret)
+Box_Cox_Transform<-preProcess(Default,method = "BoxCox")
+Box_Cox_Transform
+
+Default_Transformed=predict(Box_Cox_Transform,Default)
+y <- Default_Transformed$income
+h<-hist(y, breaks=10, col="red", xlab="Income",
+        main="Histogram before Transformation")
+xfit<-seq(min(y),max(y),length=40)
+yfit<-dnorm(xfit,mean=mean(y),sd=sd(y))
+yfit <- yfit*diff(h$mids[1:2])*length(y)
+lines(xfit, yfit, col="blue", lwd=2)
+```
+
+```{r}
+library(caret)
+library(ISLR)
+set.seed(123)
+Index_Train<-createDataPartition(UniversalBank$Personal.Loan, p=0.6, list=FALSE)
+Train <-UniversalBank[Index_Train,]
+Test  <-UniversalBank[-Index_Train,]
+nb_model <-train(Personal.Loan~Online+CreditCard,data = Train, preProc = c("BoxCox", "center", "scale"))
+```
+
+#predict test
+```{r}
+Predicted_Test_labels <-predict(nb_model,Test)
+library("gmodels")
+CrossTable(x=Test$Personal.Loan,y=Predicted_Test_labels, prop.chisq = FALSE)
+```
+
+
+
