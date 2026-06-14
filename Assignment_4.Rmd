@@ -1,0 +1,78 @@
+---
+title: "Assignment_4"
+author: "Bridget Fuller"
+date: "2026-06-14"
+output: pdf_document
+---
+
+#loading in the data set Pharmaceuticals.cvs and needed libraries install if needed
+```{r}
+summary(Pharmaceuticals)
+library(tidyverse)
+library(factoextra)
+library(ISLR)
+set.seed(123)
+
+df<-Pharmaceuticals[,c(3,11)]
+summary(df)
+```
+# I am using market cap and net profit margin, the data must be scaled to make sure the units match
+
+```{r}
+df<-scale(df)
+distance<-get_dist(df)
+fviz_dist(distance)
+```
+# this will graph the data
+# using K=3 for the number of clusters and visualizing the output
+```{r}
+k3<-kmeans(df,centers=3,nstart=25)
+k3$centers #number of centers
+k3$size  #number of companies in cluster
+k3$cluster[21] # where is the 21st company
+fviz_cluster(k3,data=df)
+```
+# it is now easier to see the company with the largest market cap and net profit margin. You can see that cluster 1 has the largest values and cluster 3 has the smallest values but the largest population. The highest value companies have recommendations of "hold" or "moderate Buy" no other cluster has this mix.
+#Cluster 1  name Large Companies, Cluster# 2 Mid Size Companies, Cluster # 3 Growing Companies 
+
+
+#other distance checks
+
+```{r}
+library(flexclust)
+set.seed(123)
+k3=kcca(df,k=3,kccaFamily("kmedians"))
+k3
+```
+
+#now predict the functions
+```{r}
+cluster_index<-predict(k3)
+dist(k3@centers)
+image(k3)
+points(df,col=cluster_index,pch=19,cex=0.3)
+```
+#finding K with elbow and silhouette charts
+```{r}
+library(tidyverse)
+library(factoextra)
+library(ISLR)
+set.seed(123)
+df<-scale(df)
+fviz_nbclust(df,kmeans,method="wss")
+```
+# the elbow chart shows K should equal 3
+#silhouette chart
+```{r}
+fviz_nbclust(df,kmeans,method="silhouette")
+```
+#  this also shows that k=3
+
+
+
+
+
+
+
+
+
