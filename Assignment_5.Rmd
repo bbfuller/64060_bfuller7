@@ -1,0 +1,151 @@
+---
+title: "Assignment_5"
+author: "Bridget Fuller"
+date: "2026-06-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+#importing the Cereals file
+```{r}
+library(readr)
+Cereals <- read_csv("~/MachineLearning/Cereals.csv")
+View(Cereals)
+install.packages("dbscan")
+install.packages("fcp")
+library(readr)
+df <- read_csv("Cereals.csv")
+```
+
+# removing lines with missing data
+```{r}
+df_clean <- na.omit(df)
+install.packages("writexl")
+library(writexl)
+write_xlsx(df_clean, "Cereals_clean.xlsx")
+sum(!complete.cases(df))      # number of bad rows
+nrow(df_clean)                # number of rows left
+```
+```{r}
+df <- df_num   # your numeric cereal dataset
+pca <- prcomp(df, scale. = TRUE)
+pca_df <- as.data.frame(pca$x[, 1:2])   # PC1 and PC2
+pca_df$cluster <- factor(db$cluster)
+library(ggplot2)
+ggplot(pca_df, aes(PC1, PC2, color = cluster)) +
+  geom_point(size = 3) +
+     theme_minimal() +
+     labs(title = "DBSCAN Clusters (PCA Projection)")
+```
+
+```{r}
+
+library(tidyverse)
+library(cluster)
+library(factoextra)
+```
+#loading data to perform comparison
+```{r}
+cereals <- read.csv("Cereals.csv")
+cereals_clean <- na.omit(cereals)
+#remove rows with missing data, keeping only numeric columns
+num_vars <- cereals_clean %>% select(where(is.numeric))
+num_scaled <- scale(num_vars)
+#scaling the data
+dist_matrix <- dist(num_scaled, method = "euclidean")
+```
+```{r}
+hc_single <- hclust(dist_matrix, method = "single")
+fviz_dend(hc_single, main = "Single Linkage")
+hc_complete <- hclust(dist_matrix, method = "complete")
+fviz_dend(hc_complete, main = "Complete Linkage")
+hc_average <- hclust(dist_matrix, method = "average")
+fviz_dend(hc_average, main = "Average Linkage")
+hc_ward <- hclust(dist_matrix, method = "ward.D2")
+fviz_dend(hc_ward, main = "Ward's Method")
+```
+# I would chose the Ward method
+
+```{r}
+# comparision values for the HC clusters
+coph_single   <- cor(dist_matrix, cophenetic(hc_single))
+coph_complete <- cor(dist_matrix, cophenetic(hc_complete))
+coph_average  <- cor(dist_matrix, cophenetic(hc_average))
+coph_ward     <- cor(dist_matrix, cophenetic(hc_ward))
+```
+
+#testing K values
+```{r}
+for (k in 3:6) {
+     cat("k =", k, "\n")
+     print(fviz_silhouette(silhouette(cutree(hc_ward, k), dist_matrix)))
+}
+```
+# I would chose 3 clusters for the data.
+```{r}
+clusters <- cutree(hc_ward, k = 4)   # example
+table(clusters)
+
+set.seed(123)
+n <- nrow(num_scaled)
+index <- sample(1:n, n/2)
+# creating partitions
+A <- num_scaled[index, ]
+B <- num_scaled[-index, ]
+
+#cluster A
+dist_A <- dist(A)
+hc_A <- hclust(dist_A, method = "ward.D2")
+clusters_A <- cutree(hc_A, k = 4)
+```
+```{r}
+centroids <- aggregate(A, by = list(cluster = clusters_A), FUN = mean)
+centroids <- centroids[,-1]
+```
+
+```{r}
+ assign_B <- apply(B, 1, function(x) {
+   dists <- apply(centroids, 1, function(c) sum((x - c)^2))
+   which.min(dists)
+ })
+```
+
+
+# Compare to full-data clustering
+```{r}
+full_clusters <- cutree(hc_ward, k = 4)
+B_full <- full_clusters[-index]
+
+table(assign_B, B_full)
+
+```
+ # healthy cereals cluster analysis
+```{r}
+health_vars <- cereals_clean %>% 
+  select(calories, protein, fat, sugars, fiber, rating)
+
+dist_health <- dist(health_vars, method = "euclidean")
+hc_health <- hclust(dist_health, method = "ward.D2")
+fviz_dend(hc_health, main = "Healthy Cereals Clustering")
+```
+ # the data does not need to be normalized
+```{r}
+db <- fpc::dbscan(df, eps = 0.26, MinPts = 3)
+dbscan::kNNdistplot(df, k =  3)
+```
+ 
+#For a list of healthy cereals not sure how to create the codes to filter out any cereals that have more than 10grams of sugar added. I have filtered them out in the csv file.  The elementary public school not only needs to review the list of healthy options they also need to evaluate what cereals their young students will actually eat.I have highlighted in yellow in the cereals.csv file the cereals I believe young children would eat from my experience as a mother of three.
+
+
+
