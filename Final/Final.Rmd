@@ -1,0 +1,111 @@
+---
+title: "Final"
+author: "Bridget Fuller"
+date: "2026-06-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(DBI)
+df <- fread("2025fuel_cost_data.csv")
+```
+
+```{r}
+set.seed(123)
+sample_df <- df %>% sample_frac(0.02)
+sample_df <- as.data.frame(sample_df)
+sample_df <- sample_df %>%
+  filter(
+    total_fuel_cost != "null",
+    sulfur_content_pct != "null",
+    ash_content_pct != "null"
+  ) %>%
+  mutate(
+    total_fuel_cost = as.numeric(gsub("[,$ ]", "", total_fuel_cost)),
+    sulfur_content_pct = as.numeric(gsub("[,$ ]", "", sulfur_content_pct)),
+    ash_content_pct = as.numeric(gsub("[,$ ]", "", ash_content_pct)),
+    fuel_mmbtu_per_unit = as.numeric(gsub("[,$ ]", "", fuel_mmbtu_per_unit)),
+    fuel_cost_per_mmbtu = as.numeric(gsub("[,$ ]", "", fuel_cost_per_mmbtu)),
+    bulk_agg_fuel_cost_per_mmbtu = as.numeric(gsub("[,$ ]", "", bulk_agg_fuel_cost_per_mmbtu)),
+    fuel_received_mmbtu = as.numeric(gsub("[,$ ]", "", fuel_received_mmbtu))
+  )
+numeric_cols <- sapply(sample_df, is.numeric)
+```
+
+```{r}
+sample_norm <- sample_df
+sample_norm[numeric_cols] <- lapply(sample_df[numeric_cols], function(x) {
+  (x - min(x, na.rm = TRUE)) / (max(x, na.rm = TRUE))
+})
+sulfur_summary <- sample_norm %>%
+  group_by(fuel_type_code_pudl) %>%
+  summarize(
+    avg_cost = mean(total_fuel_cost, na.rm = TRUE),
+    avg_sulfur = mean(sulfur_content_pct, na.rm = TRUE)
+  ) %>%
+  arrange(avg_sulfur)
+```
+
+```{r}
+ash_summary <- sample_norm %>%
+  group_by(fuel_type_code_pudl) %>%
+  summarize(
+    avg_cost = mean(total_fuel_cost, na.rm = TRUE),
+    avg_ash = mean(ash_content_pct, na.rm = TRUE)
+  ) %>%
+  arrange(avg_ash)
+```
+
+```{r}
+sulfur_summary
+ash_summary
+overall_best <- sample_norm %>%
+  group_by(fuel_type_code_pudl) %>%
+  summarize(
+    avg_cost = mean(total_fuel_cost, na.rm = TRUE)
+  ) %>%
+  arrange(avg_cost)
+```
+
+```{r}
+overall_best
+fuel_cost_by_type <- sample_norm %>%
+  group_by(fuel_type_code_pudl) %>%
+  summarize(
+    avg_cost = mean(total_fuel_cost, na.rm = TRUE),
+    avg_sulfur = mean(sulfur_content_pct, na.rm = TRUE),
+    avg_ash = mean(ash_content_pct, na.rm = TRUE)
+  )
+```
+
+
+```{r}
+ggplot(fuel_cost_by_type, aes(x = fuel_type_code_pudl, y = avg_cost, fill = fuel_type_code_pudl)) +
+  geom_col() +
+  theme_minimal() +
+  labs(
+    title = "Average Total Fuel Cost by Fuel Type",
+    x = "Fuel Type",
+    y = "Average Total Fuel Cost"
+  ) +
+  guides(fill = "none")
+```
+
+#regression
+```{r}
+sample_norm$fuel_type_code_pudl <- as.factor(sample_norm$fuel_type_code_pudl)
+
+model <- lm(
+  total_fuel_cost ~ sulfur_content_pct + ash_content_pct + fuel_type_code_pudl,
+  data = sample_norm
+)
+
+summary(model)
+```
+
+```
+
